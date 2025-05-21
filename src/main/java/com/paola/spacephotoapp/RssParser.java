@@ -9,13 +9,22 @@ import java.net.URL;
 import java.net.HttpURLConnection;
 import java.util.ArrayList;
 import java.util.List;
+// for threading
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class RssParser {
 
     private static final String RSS_URL = "https://photojournal.jpl.nasa.gov/rss/new";
 
+    /**
+     * Main function responsible for parsing rss feed
+     * @return
+     */
     public List<SpacePhoto> parse() {
-        List<SpacePhoto> photos = new ArrayList<>();
+
+        // initializes list of SpacePhoto items, used for storing rss items
+        List<SpacePhoto> rssFeed = new ArrayList<>();
 
         try {
             URL url = new URL(RSS_URL);
@@ -30,7 +39,7 @@ public class RssParser {
 
             if (responseCode != 200) {
                 System.err.println("Failed to fetch RSS feed.");
-                return photos;
+                return rssFeed;
             }
 
             // Optional debug: print first few lines
@@ -53,6 +62,9 @@ public class RssParser {
             Document doc = builder.parse(inputStream);
             NodeList items = doc.getElementsByTagName("item");
 
+            // 4 parallel downloads
+            ExecutorService executor = Executors.newFixedThreadPool(4);
+
             for (int i = 0; i < items.getLength(); i++) {
                 Element item = (Element) items.item(i);
 
@@ -67,16 +79,57 @@ public class RssParser {
                 String imageUrl = extractImageUrlFromDescription(descriptionHtml);
                 photo.setImageUrl(imageUrl);
 
+                if (imageUrl != null && !imageUrl.isEmpty()) {
+                    String fileName = photo.getGuid().replaceAll("[^a-zA-Z0-9]", "_") + ".jpg";
 
-                photos.add(photo);
+                    // Lambda = functional programming
+                    executor.submit(() -> {
+                        downloadImage(imageUrl, fileName);
+                    });
+                    photo.setLocalImagePath("assets/" + fileName);
+                }
+
+                rssFeed.add(photo);
             }
+
+            executor.shutdown(); // Don't accept new tasks
+
 
         } catch (Exception e) {
             e.printStackTrace();
         }
 
-        return photos;
+        return rssFeed;
     }
+
+    /**
+     * Downloading image
+     *             Each image is downloaded in a separate thread
+     *             Files are saved under the assets/ folder
+     *             Console prints Downloaded: PIAxxxx.jpg for each
+     */
+    private void downloadImage(String imageUrl, String filename) {
+        try {
+            URL url = new URL(imageUrl);
+            InputStream in = url.openStream();
+
+            // Create "assets" folder if it doesn't exist
+            java.nio.file.Path folder = java.nio.file.Paths.get("assets");
+            if (!java.nio.file.Files.exists(folder)) {
+                java.nio.file.Files.createDirectory(folder);
+            }
+
+            java.nio.file.Path targetPath = folder.resolve(filename);
+            java.nio.file.Files.copy(in, targetPath, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+
+            in.close();
+            System.out.println("Downloaded: " + filename);
+        } catch (Exception e) {
+            System.err.println("Failed to download " + imageUrl);
+            e.printStackTrace();
+        }
+    }
+
 
     private String getText(Element parent, String tagName) {
         NodeList list = parent.getElementsByTagName(tagName);

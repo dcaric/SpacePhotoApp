@@ -5,8 +5,9 @@ import jakarta.xml.bind.annotation.XmlRootElement;
 import jakarta.xml.bind.annotation.XmlAccessorType;
 import jakarta.xml.bind.annotation.XmlAccessType;
 
-@XmlRootElement(name = "item")
-@XmlAccessorType(XmlAccessType.FIELD)
+// this is used for RSS: https://photojournal.jpl.nasa.gov/rss/new
+@XmlRootElement(name = "item") // root xml element
+@XmlAccessorType(XmlAccessType.FIELD) // Uses all non-static, non-transient fields (private included)
 public class SpacePhoto {
 
     @XmlElement(name = "title")
