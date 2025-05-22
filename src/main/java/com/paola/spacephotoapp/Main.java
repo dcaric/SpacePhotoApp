@@ -1,38 +1,30 @@
 package com.paola.spacephotoapp;
-import java.util.Optional;
+
+import javax.swing.*;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class Main {
     public static void main(String[] args) {
         RssParser parser = new RssParser();
-        var photos = parser.parse();
+        List<NewsRelease> newsList = parser.parse();
 
+        System.out.println("Parsed " + newsList.size() + " news items.");
 
-        System.out.println("Parsed " + photos.size() + " photos:");
+        // Group by pubDate
+        Map<String, List<NewsRelease>> grouped = newsList.stream()
+                .collect(Collectors.groupingBy(NewsRelease::getPubDate));
 
-
-
-
-        // using optional
-        /*
-        for (SpacePhoto photo : photos) {
-            System.out.print(photo.getTitle() + " -> ");
-            Optional.ofNullable(photo.getImageUrl())
-                    .ifPresentOrElse(
-                            url -> System.out.println(url),
-                            () -> System.out.println("No image")
-                    );
-        }
-        */
-
-        // functional programming instead of classic for loop
-        photos.stream()
-                .filter(photo -> photo.getImageUrl() != null)
-                .map(photo -> photo.getTitle() + " -> " + photo.getImageUrl())
-                .forEach(System.out::println);
-
-
-        javax.swing.SwingUtilities.invokeLater(() -> {
-            new MainFrame().setVisible(true);
+        grouped.forEach((date, items) -> {
+            System.out.println("Date: " + date + ", Count: " + items.size());
         });
+
+        Set<String> uniqueDates = newsList.stream()
+                .map(NewsRelease::getPubDate)
+                .collect(Collectors.toSet());
+
+        System.out.println("Unique publication dates: " + uniqueDates.size());
+
+        javax.swing.SwingUtilities.invokeLater(() -> new MainFrame().setVisible(true));
     }
 }

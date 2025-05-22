@@ -4,13 +4,10 @@ import javax.swing.*;
 
 public class MainFrame extends JFrame {
     public MainFrame() {
-        setTitle("Movie Manager");
+        setTitle("NASA News Manager");
         setSize(800, 600);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
-
-        // Simple label for testing
-        JLabel label = new JLabel("Hello from MainFrame!", SwingConstants.CENTER);
-        add(label);
+        add(new JLabel("Welcome to NASA News Manager!", SwingConstants.CENTER));
     }
 }

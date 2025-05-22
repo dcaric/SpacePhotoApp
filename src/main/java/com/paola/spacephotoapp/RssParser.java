@@ -1,48 +1,37 @@
 package com.paola.spacephotoapp;
 
+import org.jsoup.Jsoup;
 import org.w3c.dom.*;
 import javax.xml.parsers.*;
-import java.io.BufferedReader;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.net.URL;
+import java.io.*;
 import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.file.*;
 import java.util.ArrayList;
 import java.util.List;
-// for threading
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class RssParser {
+    private static final String RSS_URL = "https://www.nasa.gov/news-release/feed/";
 
-    private static final String RSS_URL = "https://photojournal.jpl.nasa.gov/rss/new";
-
-    /**
-     * Main function responsible for parsing rss feed
-     * @return
-     */
-    public List<SpacePhoto> parse() {
-
-        // initializes list of SpacePhoto items, used for storing rss items
-        List<SpacePhoto> rssFeed = new ArrayList<>();
+    public List<NewsRelease> parse() {
+        List<NewsRelease> rssFeed = new ArrayList<>();
+        ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
 
         try {
             URL url = new URL(RSS_URL);
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("GET");
-
-            // ✅ Add User-Agent to avoid 403
             conn.setRequestProperty("User-Agent", "Mozilla/5.0");
 
             int responseCode = conn.getResponseCode();
             System.out.println("HTTP response code: " + responseCode);
-
             if (responseCode != 200) {
                 System.err.println("Failed to fetch RSS feed.");
                 return rssFeed;
             }
 
-            // Optional debug: print first few lines
             BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
             StringBuilder rawXml = new StringBuilder();
             String line;
@@ -50,50 +39,54 @@ public class RssParser {
                 rawXml.append(line).append("\n");
             }
 
-            // Print first 10 lines for debug
             System.out.println("--- RAW XML START ---");
             System.out.println(rawXml.substring(0, Math.min(1000, rawXml.length())));
             System.out.println("--- RAW XML END ---");
 
-            // Parse the XML string
-            InputStream inputStream = new java.io.ByteArrayInputStream(rawXml.toString().getBytes());
+            InputStream inputStream = new ByteArrayInputStream(rawXml.toString().getBytes());
             DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
             DocumentBuilder builder = factory.newDocumentBuilder();
             Document doc = builder.parse(inputStream);
             NodeList items = doc.getElementsByTagName("item");
 
-            // 4 parallel downloads
-            ExecutorService executor = Executors.newFixedThreadPool(4);
-
             for (int i = 0; i < items.getLength(); i++) {
-                Element item = (Element) items.item(i);
+                org.w3c.dom.Element item = (org.w3c.dom.Element) items.item(i);
+                NewsRelease news = new NewsRelease();
 
-                SpacePhoto photo = new SpacePhoto();
-                photo.setTitle(getText(item, "title"));
-                photo.setDescription(getText(item, "description"));
-                photo.setLink(getText(item, "link"));
-                photo.setGuid(getText(item, "guid"));
-                photo.setPubDate(getText(item, "pubDate"));
+                news.setTitle(getText(item, "title"));
+                news.setLink(getText(item, "link"));
 
-                String descriptionHtml = getText(item, "description");
-                String imageUrl = extractImageUrlFromDescription(descriptionHtml);
-                photo.setImageUrl(imageUrl);
+                String htmlDescription = getText(item, "content:encoded");
+                if (htmlDescription == null || htmlDescription.isEmpty()) {
+                    htmlDescription = getText(item, "description");
+                }
+                news.setDescription(Jsoup.parse(htmlDescription).text());
+
+                news.setGuid(getText(item, "guid"));
+                news.setPubDate(getText(item, "pubDate"));
+
+                String imageUrl = getAttribute(item, "media:thumbnail", "url");
+                if (imageUrl == null || imageUrl.isEmpty()) {
+                    String htmlContent = getText(item, "content:encoded");
+                    imageUrl = extractLargestImageFromContent(htmlContent);
+                }
+                news.setImageUrl(imageUrl);
 
                 if (imageUrl != null && !imageUrl.isEmpty()) {
-                    String fileName = photo.getGuid().replaceAll("[^a-zA-Z0-9]", "_") + ".jpg";
-
-                    // Lambda = functional programming
-                    executor.submit(() -> {
-                        downloadImage(imageUrl, fileName);
-                    });
-                    photo.setLocalImagePath("assets/" + fileName);
+                    final String finalImageUrl = imageUrl;
+                    String fileName = news.getGuid().replaceAll("[^a-zA-Z0-9]", "_") + "_full.jpg";
+                    executor.submit(() -> downloadImage(finalImageUrl, fileName));
+                    news.setLocalImagePath("assets/" + fileName);
                 }
 
-                rssFeed.add(photo);
+                NewsRepository repository = new NewsRepository();
+                if (!repository.existsByGuid(news.getGuid())) {
+                    rssFeed.add(news);
+                    repository.save(news);
+                } else {
+                    System.out.println("Skipped duplicate: " + news.getGuid());
+                }
             }
-
-            executor.shutdown(); // Don't accept new tasks
-
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -102,26 +95,16 @@ public class RssParser {
         return rssFeed;
     }
 
-    /**
-     * Downloading image
-     *             Each image is downloaded in a separate thread
-     *             Files are saved under the assets/ folder
-     *             Console prints Downloaded: PIAxxxx.jpg for each
-     */
     private void downloadImage(String imageUrl, String filename) {
         try {
             URL url = new URL(imageUrl);
             InputStream in = url.openStream();
-
-            // Create "assets" folder if it doesn't exist
-            java.nio.file.Path folder = java.nio.file.Paths.get("assets");
-            if (!java.nio.file.Files.exists(folder)) {
-                java.nio.file.Files.createDirectory(folder);
+            Path folder = Paths.get("assets");
+            if (!Files.exists(folder)) {
+                Files.createDirectory(folder);
             }
-
-            java.nio.file.Path targetPath = folder.resolve(filename);
-            java.nio.file.Files.copy(in, targetPath, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-
+            Path targetPath = folder.resolve(filename);
+            Files.copy(in, targetPath, StandardCopyOption.REPLACE_EXISTING);
             in.close();
             System.out.println("Downloaded: " + filename);
         } catch (Exception e) {
@@ -130,8 +113,16 @@ public class RssParser {
         }
     }
 
+    private String getAttribute(org.w3c.dom.Element parent, String tagName, String attributeName) {
+        NodeList list = parent.getElementsByTagName(tagName);
+        if (list.getLength() > 0) {
+            org.w3c.dom.Element elem = (org.w3c.dom.Element) list.item(0);
+            return elem.getAttribute(attributeName);
+        }
+        return null;
+    }
 
-    private String getText(Element parent, String tagName) {
+    private String getText(org.w3c.dom.Element parent, String tagName) {
         NodeList list = parent.getElementsByTagName(tagName);
         if (list.getLength() > 0 && list.item(0).getTextContent() != null) {
             return list.item(0).getTextContent().trim();
@@ -141,15 +132,34 @@ public class RssParser {
 
     private String extractImageUrlFromDescription(String html) {
         if (html == null || !html.contains("<img")) return null;
-
         int srcStart = html.indexOf("src='");
         if (srcStart == -1) return null;
-
-        srcStart += 5; // move past "src='"
+        srcStart += 5;
         int srcEnd = html.indexOf("'", srcStart);
         if (srcEnd == -1) return null;
-
         return html.substring(srcStart, srcEnd).trim();
     }
 
+    private String extractLargestImageFromContent(String html) {
+        if (html == null) return null;
+        org.jsoup.nodes.Document doc = Jsoup.parse(html);
+        org.jsoup.select.Elements images = doc.select("img");
+
+        String largest = null;
+        int maxWidth = 0;
+        for (org.jsoup.nodes.Element img : images) {
+            String src = img.attr("src");
+            String widthAttr = img.attr("width");
+            int width = 0;
+            try {
+                width = Integer.parseInt(widthAttr);
+            } catch (NumberFormatException ignored) {}
+
+            if (width > maxWidth) {
+                maxWidth = width;
+                largest = src;
+            }
+        }
+        return largest;
+    }
 }
