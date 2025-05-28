@@ -36,4 +36,9 @@ public class NewsController {
     public void previousNews() {
         if (hasPrevious()) currentIndex--;
     }
+
+    public void setNewsList(List<NewsRelease> newsList) {
+        this.newsList = newsList;
+        this.currentIndex = 0;
+    }
 }

@@ -3,6 +3,8 @@
 package com.paola.spacephotoapp.view;
 
 import com.paola.spacephotoapp.controller.NewsController;
+import com.paola.spacephotoapp.helping.NewsRepository;
+import com.paola.spacephotoapp.helping.RssParser;
 import com.paola.spacephotoapp.model.NewsRelease;
 
 import javax.swing.*;
@@ -77,6 +79,22 @@ public class MainFrame extends JFrame {
         navPanel.add(prevButton);
         navPanel.add(nextButton);
         add(navPanel, BorderLayout.SOUTH);
+
+        // refresh button
+        JButton refreshButton = new JButton("Refresh Feed");
+        refreshButton.addActionListener(e -> {
+            RssParser parser = new RssParser();
+            parser.parse(); // This should insert only new news
+
+            // Reload updated list
+            NewsRepository repo = new NewsRepository();
+            List<NewsRelease> updatedList = repo.findAll();
+            controller.setNewsList(updatedList);
+            updateDisplay();
+        });
+
+        navPanel.add(refreshButton);
+
     }
 
     private void navigate(int offset) {
