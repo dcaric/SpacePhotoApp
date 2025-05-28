@@ -1,6 +1,8 @@
 // (Controller) manages state and navigation
 
-package com.paola.spacephotoapp;
+package com.paola.spacephotoapp.controller;
+
+import com.paola.spacephotoapp.model.NewsRelease;
 
 import java.util.List;
 

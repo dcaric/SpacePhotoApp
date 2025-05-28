@@ -1,6 +1,9 @@
 // (View) handles the UI.
 
-package com.paola.spacephotoapp;
+package com.paola.spacephotoapp.view;
+
+import com.paola.spacephotoapp.controller.NewsController;
+import com.paola.spacephotoapp.model.NewsRelease;
 
 import javax.swing.*;
 import java.awt.*;

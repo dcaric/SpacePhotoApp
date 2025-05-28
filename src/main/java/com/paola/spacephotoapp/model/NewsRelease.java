@@ -1,6 +1,9 @@
 //  (Model) represents the data
 
-package com.paola.spacephotoapp;
+package com.paola.spacephotoapp.model;
+
+import com.paola.spacephotoapp.helping.MediaItem;
+import com.paola.spacephotoapp.helping.NewsCategory;
 
 import java.util.Objects;
 

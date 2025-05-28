@@ -1,5 +1,6 @@
-package com.paola.spacephotoapp;
+package com.paola.spacephotoapp.helping;
 
+import com.paola.spacephotoapp.model.NewsRelease;
 import org.jsoup.Jsoup;
 import org.w3c.dom.*;
 import javax.xml.parsers.*;

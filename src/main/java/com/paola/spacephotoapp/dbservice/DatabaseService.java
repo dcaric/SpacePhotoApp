@@ -1,4 +1,6 @@
-package com.paola.spacephotoapp;
+package com.paola.spacephotoapp.dbservice;
+
+import com.paola.spacephotoapp.model.NewsRelease;
 
 import java.sql.*;
 

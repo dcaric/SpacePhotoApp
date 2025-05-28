@@ -1,5 +1,8 @@
-package com.paola.spacephotoapp;
+package com.paola.spacephotoapp.helping;
 
+
+import com.paola.spacephotoapp.dbservice.DatabaseService;
+import com.paola.spacephotoapp.model.NewsRelease;
 
 import java.sql.*;
 import java.util.ArrayList;
