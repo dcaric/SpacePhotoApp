@@ -5,7 +5,7 @@ import java.sql.*;
 public class DatabaseService {
     private static final DatabaseService instance = new DatabaseService();
 
-    private static final String CONNECTION_URL =
+    public static final String CONNECTION_URL =
             "jdbc:sqlserver://localhost:1433;databaseName=Photo;encrypt=true;trustServerCertificate=true;user=photo_user;password=photo123!";
 
     private DatabaseService() {}

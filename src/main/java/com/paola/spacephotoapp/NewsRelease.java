@@ -1,3 +1,5 @@
+//  (Model) represents the data
+
 package com.paola.spacephotoapp;
 
 import java.util.Objects;

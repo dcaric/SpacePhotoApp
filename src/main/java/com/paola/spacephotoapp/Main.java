@@ -6,9 +6,13 @@ import java.util.stream.Collectors;
 
 public class Main {
     public static void main(String[] args) {
-        RssParser parser = new RssParser();
-        List<NewsRelease> newsList = parser.parse();
+        //RssParser parser = new RssParser();
+        //List<NewsRelease> newsList = parser.parse();
 
+        NewsRepository repo = new NewsRepository();
+        List<NewsRelease> newsList = repo.findAll();
+
+        System.out.println("Loaded " + newsList.size() + " news items from database.");
         System.out.println("Parsed " + newsList.size() + " news items.");
 
         // Group by pubDate
@@ -25,6 +29,22 @@ public class Main {
 
         System.out.println("Unique publication dates: " + uniqueDates.size());
 
-        javax.swing.SwingUtilities.invokeLater(() -> new MainFrame().setVisible(true));
+        //javax.swing.SwingUtilities.invokeLater(() -> new MainFrame().setVisible(true));
+
+        // old way of starting MaiFrame without dialog before
+        //SwingUtilities.invokeLater(() -> new MainFrame(newsList).setVisible(true));
+
+        // Information dialog at startup
+        SwingUtilities.invokeLater(() -> {
+            JOptionPane.showMessageDialog(
+                    null,
+                    "Welcome to NASA News Viewer!\nUse the Next and Previous buttons to browse the news.\nClick OK to continue.",
+                    "Welcome",
+                    JOptionPane.INFORMATION_MESSAGE
+            );
+            new MainFrame(newsList).setVisible(true);
+        });
+
+
     }
 }
