@@ -33,6 +33,7 @@ public class MainFrame extends JFrame {
     private JLabel titleLabel;
     private JLabel imageLabel;
     private JTextArea descriptionArea;
+    private JScrollPane scrollPanel;
     private JButton prevButton;
     private JButton nextButton;
     private JLabel dateLabel;
@@ -175,9 +176,9 @@ public class MainFrame extends JFrame {
         descriptionArea.setWrapStyleWord(true);
         descriptionArea.setLineWrap(true);
         descriptionArea.setEditable(false);
-        JScrollPane scrollPane = new JScrollPane(descriptionArea);
-        scrollPane.setPreferredSize(new Dimension(350, 400));
-        add(scrollPane, BorderLayout.EAST);
+        scrollPanel = new JScrollPane(descriptionArea);
+        scrollPanel.setPreferredSize(new Dimension(350, 400));
+        add(scrollPanel, BorderLayout.EAST);
 
         prevButton = new JButton("Previous");
         nextButton = new JButton("Next");
@@ -226,6 +227,7 @@ public class MainFrame extends JFrame {
         JRadioButton rbTitleDesc = new JRadioButton("Title + Desc");
         JRadioButton rbFull = new JRadioButton("Full");
 
+        // defined ButtonGroup
         ButtonGroup viewModeGroup = new ButtonGroup();
         viewModeGroup.add(rbTitleOnly);
         viewModeGroup.add(rbTitleDesc);
@@ -296,34 +298,37 @@ public class MainFrame extends JFrame {
     private void updateDisplay() {
         controller.getOptionalCurrentNews().ifPresent(news -> {
             titleLabel.setText(news.getTitle());
-
-            titleLabel.setText(news.getTitle());
-            descriptionArea.setText(currentViewMode != ViewMode.TITLE_ONLY ? news.getDescription() : "");
-            descriptionArea.setVisible(currentViewMode != ViewMode.TITLE_ONLY);
-            imageLabel.setVisible(currentViewMode == ViewMode.FULL);
-
-
-            descriptionArea.setText(news.getDescription());
             dateLabel.setText("Published: " + news.getPubDate());
 
-            ImageIcon icon = null;
+            // Description visibility
+            boolean showDesc = currentViewMode != ViewMode.TITLE_ONLY;
+            descriptionArea.setText(showDesc ? news.getDescription() : "");
+            //descriptionArea.setVisible(showDesc);
+            scrollPanel.setVisible(showDesc);
 
+
+            // Image visibility
+            boolean showImage = currentViewMode == ViewMode.FULL;
+            imageLabel.setVisible(showImage);
+
+            // Drop panel visibility: only show in FULL
+            dropPanel.setVisible(currentViewMode == ViewMode.FULL);
+
+            // Load and scale image
+            ImageIcon icon = null;
             try {
                 String path = news.getLocalImagePath();
                 if (path != null) {
-
                     BufferedImage img = ImageIO.read(new File(path));
-                    fullSizeImage = img; // Save the original image
-
+                    fullSizeImage = img;
                     if (img != null) {
-                        Image scaled = img.getScaledInstance(150, 100, Image.SCALE_SMOOTH); // thumbnail size
+                        Image scaled = img.getScaledInstance(150, 100, Image.SCALE_SMOOTH);
                         icon = new ImageIcon(scaled);
                     }
                 }
             } catch (Exception ignored) {}
 
             imageLabel.setIcon(icon);
-
 
             imageLabel.addMouseListener(new MouseAdapter() {
                 public void mousePressed(MouseEvent e) {
@@ -347,7 +352,7 @@ public class MainFrame extends JFrame {
 
                                     @Override
                                     public Object getTransferData(DataFlavor flavor) {
-                                        return fullSizeImage; // ✅ Use the original
+                                        return fullSizeImage;
                                     }
                                 };
                             }
