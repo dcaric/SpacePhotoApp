@@ -26,7 +26,7 @@ public class RssParser {
         HashMap — For failed downloads (key: GUID, value: error message).
      */
 
-    public List<NewsRelease> parse() {
+    public List<NewsRelease> parse(int count) {
         // List for ordered storage
         List<NewsRelease> rssFeed = new ArrayList<>();
         ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
@@ -69,7 +69,11 @@ public class RssParser {
             Document doc = builder.parse(inputStream);
             NodeList items = doc.getElementsByTagName("item");
 
+            int addedCount = 0;
+
             for (int i = 0; i < items.getLength(); i++) {
+                if (addedCount >= count) break; // ✅ Stop if we've reached the limit
+
                 org.w3c.dom.Element item = (org.w3c.dom.Element) items.item(i);
                 NewsRelease news = new NewsRelease();
 
@@ -95,7 +99,6 @@ public class RssParser {
                 if (imageUrl != null && !imageUrl.isEmpty() && !downloadedGuids.contains(news.getGuid())) {
                     final String finalImageUrl = imageUrl;
                     String fileName = news.getGuid().replaceAll("[^a-zA-Z0-9]", "_") + "_full.jpg";
-                    //executor.submit(() -> downloadImage(finalImageUrl, fileName));
 
                     executor.submit(() -> {
                         try {
@@ -104,17 +107,20 @@ public class RssParser {
                             failedDownloads.put(news.getGuid(), "Failed: " + ex.getMessage());
                         }
                     });
+
                     news.setLocalImagePath("assets/" + fileName);
-                    downloadedGuids.add(news.getGuid()); // Add to prevent re-downloading
+                    downloadedGuids.add(news.getGuid());
                 }
 
                 if (!repository.existsByGuid(news.getGuid())) {
                     rssFeed.add(news);
                     repository.insertNews(news);
+                    addedCount++; // ✅ Track how many we’ve added
                 } else {
                     System.out.println("Skipped duplicate: " + news.getGuid());
                 }
             }
+
 
             // call logging to log if some failure occur
             LogUtils.logFailedDownloads(failedDownloads);

@@ -27,6 +27,8 @@ import java.awt.datatransfer.DataFlavor;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 
+// This application uses the standard Java Swing framework.
+
 public class MainFrame extends JFrame {
     private JLabel titleLabel;
     private JLabel imageLabel;
@@ -43,6 +45,9 @@ public class MainFrame extends JFrame {
     private JLabel dropLabel;
 
     private NewsController controller;
+
+    private enum ViewMode { TITLE_ONLY, TITLE_DESC, FULL }
+    private ViewMode currentViewMode = ViewMode.FULL;
 
     // Setup menu in the bar
     private void setupMenuBar() {
@@ -188,13 +193,7 @@ public class MainFrame extends JFrame {
 
 
         add(navPanel, BorderLayout.SOUTH);
-        // Combine drop panel + nav panel
-        /*
-        JPanel southPanel = new JPanel(new BorderLayout());
-        southPanel.add(dropPanel, BorderLayout.CENTER);
-        southPanel.add(navPanel, BorderLayout.SOUTH);
-        add(southPanel, BorderLayout.SOUTH);
-        */
+
 
         categoryComboBox = new JComboBox<>(NewsCategory.values());
         categoryComboBox.insertItemAt(null, 0); // for "All categories"
@@ -222,11 +221,54 @@ public class MainFrame extends JFrame {
 
 
 
+        // radio buttons for menu grouping
+        JRadioButton rbTitleOnly = new JRadioButton("Title Only");
+        JRadioButton rbTitleDesc = new JRadioButton("Title + Desc");
+        JRadioButton rbFull = new JRadioButton("Full");
+
+        ButtonGroup viewModeGroup = new ButtonGroup();
+        viewModeGroup.add(rbTitleOnly);
+        viewModeGroup.add(rbTitleDesc);
+        viewModeGroup.add(rbFull);
+        rbFull.setSelected(true);
+
+        rbTitleOnly.addActionListener(e -> {
+            currentViewMode = ViewMode.TITLE_ONLY;
+            updateDisplay();
+        });
+        rbTitleDesc.addActionListener(e -> {
+            currentViewMode = ViewMode.TITLE_DESC;
+            updateDisplay();
+        });
+        rbFull.addActionListener(e -> {
+            currentViewMode = ViewMode.FULL;
+            updateDisplay();
+        });
+
+        JPanel viewModePanel = new JPanel();
+        viewModePanel.setBorder(BorderFactory.createTitledBorder("View Mode"));
+        viewModePanel.add(rbTitleOnly);
+        viewModePanel.add(rbTitleDesc);
+        viewModePanel.add(rbFull);
+
+        // Add to topPanel or wherever appropriate
+        topPanel.add(viewModePanel, BorderLayout.EAST);
+
+
+
+
         // refresh button
         JButton refreshButton = new JButton("Refresh Feed");
+
+        // Spinner to choose number of news items to load
+        SpinnerNumberModel spinnerModel = new SpinnerNumberModel(10, 1, 100, 1);
+        JSpinner spinnerLoadCount = new JSpinner(spinnerModel);
+        JLabel spinnerLabel = new JLabel("Items to load:");
+
         refreshButton.addActionListener(e -> {
+            int count = (int) spinnerLoadCount.getValue(); // Get selected number
             RssParser parser = new RssParser();
-            parser.parse(); // This should insert only new news
+            parser.parse(count); // This should insert only new news
 
             // Reload updated list
             NewsRepository repo = new NewsRepository();
@@ -235,7 +277,10 @@ public class MainFrame extends JFrame {
             updateDisplay();
         });
 
+
         navPanel.add(refreshButton);
+        navPanel.add(spinnerLabel);
+        navPanel.add(spinnerLoadCount);
 
     }
 
@@ -251,6 +296,13 @@ public class MainFrame extends JFrame {
     private void updateDisplay() {
         controller.getOptionalCurrentNews().ifPresent(news -> {
             titleLabel.setText(news.getTitle());
+
+            titleLabel.setText(news.getTitle());
+            descriptionArea.setText(currentViewMode != ViewMode.TITLE_ONLY ? news.getDescription() : "");
+            descriptionArea.setVisible(currentViewMode != ViewMode.TITLE_ONLY);
+            imageLabel.setVisible(currentViewMode == ViewMode.FULL);
+
+
             descriptionArea.setText(news.getDescription());
             dateLabel.setText("Published: " + news.getPubDate());
 
