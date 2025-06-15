@@ -1,7 +1,7 @@
 package com.paola.spacephotoapp;
 
-import com.paola.spacephotoapp.helping.NewsRepository;
-import com.paola.spacephotoapp.model.NewsRelease;
+import com.paola.spacephotoapp.repository.NewsRepository;
+import com.paola.spacephotoapp.domain.model.NewsRelease;
 import com.paola.spacephotoapp.view.MainFrame;
 
 import javax.swing.*;

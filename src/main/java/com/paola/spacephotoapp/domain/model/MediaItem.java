@@ -1,4 +1,4 @@
-package com.paola.spacephotoapp.helping;
+package com.paola.spacephotoapp.domain.model;
 
 public abstract class MediaItem {
     private String title;

@@ -1,13 +1,12 @@
 //  (Model) represents the data
 
-package com.paola.spacephotoapp.model;
+package com.paola.spacephotoapp.domain.model;
 
-import com.paola.spacephotoapp.helping.MediaItem;
-import com.paola.spacephotoapp.helping.NewsCategory;
+import com.paola.spacephotoapp.domain.enums.NewsCategory;
 
 import java.util.Objects;
 
-public class NewsRelease extends MediaItem {
+public class NewsRelease extends MediaItem implements Comparable<NewsRelease> {
     private String link;
     private String guid;
     private String pubDate;
@@ -49,5 +48,10 @@ public class NewsRelease extends MediaItem {
     @Override
     public int hashCode() {
         return Objects.hash(guid);
+    }
+
+    @Override
+    public int compareTo(NewsRelease other) {
+        return this.pubDate.compareToIgnoreCase(other.pubDate);
     }
 }

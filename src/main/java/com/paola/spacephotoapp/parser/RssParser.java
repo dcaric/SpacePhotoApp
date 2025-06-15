@@ -1,6 +1,10 @@
-package com.paola.spacephotoapp.helping;
+package com.paola.spacephotoapp.parser;
 
-import com.paola.spacephotoapp.model.NewsRelease;
+import com.paola.spacephotoapp.domain.enums.NewsCategory;
+import com.paola.spacephotoapp.repository.NewsRepository;
+import com.paola.spacephotoapp.repository.NewsRepositoryInterface;
+import com.paola.spacephotoapp.domain.model.NewsRelease;
+import com.paola.spacephotoapp.util.LogUtils;
 import org.jsoup.Jsoup;
 import org.w3c.dom.*;
 import javax.xml.parsers.*;
@@ -8,17 +12,32 @@ import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.file.*;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.Function;
 
 public class RssParser {
     private static final String RSS_URL = "https://www.nasa.gov/news-release/feed/";
 
+    /*
+        ArrayList — Used in rssFeed = new ArrayList<>(): fast access by index, used in UI rendering.
+        HashSet — For GUIDs, to prevent duplicates fast (O(1) lookup).
+        HashMap — For failed downloads (key: GUID, value: error message).
+     */
+
     public List<NewsRelease> parse() {
+        // List for ordered storage
         List<NewsRelease> rssFeed = new ArrayList<>();
         ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
+
+        // Map interface polymorphically for logging.
+        Map<String, String> failedDownloads = new HashMap<>();
+
+        // for preventing unnecessary download of feeds
+        NewsRepositoryInterface repository = new NewsRepository();
+        Set<String> downloadedGuids = repository.getAllGuids();
+
 
         try {
             URL url = new URL(RSS_URL);
@@ -73,26 +92,49 @@ public class RssParser {
                 }
                 news.setImageUrl(imageUrl);
 
-                if (imageUrl != null && !imageUrl.isEmpty()) {
+                if (imageUrl != null && !imageUrl.isEmpty() && !downloadedGuids.contains(news.getGuid())) {
                     final String finalImageUrl = imageUrl;
                     String fileName = news.getGuid().replaceAll("[^a-zA-Z0-9]", "_") + "_full.jpg";
-                    executor.submit(() -> downloadImage(finalImageUrl, fileName));
+                    //executor.submit(() -> downloadImage(finalImageUrl, fileName));
+
+                    executor.submit(() -> {
+                        try {
+                            downloadImage(finalImageUrl, fileName);
+                        } catch (Exception ex) {
+                            failedDownloads.put(news.getGuid(), "Failed: " + ex.getMessage());
+                        }
+                    });
                     news.setLocalImagePath("assets/" + fileName);
+                    downloadedGuids.add(news.getGuid()); // Add to prevent re-downloading
                 }
 
-                NewsRepository repository = new NewsRepository();
                 if (!repository.existsByGuid(news.getGuid())) {
                     rssFeed.add(news);
-                    repository.save(news);
+                    repository.insertNews(news);
                 } else {
                     System.out.println("Skipped duplicate: " + news.getGuid());
                 }
             }
 
+            // call logging to log if some failure occur
+            LogUtils.logFailedDownloads(failedDownloads);
+
+
         } catch (Exception e) {
             e.printStackTrace();
         }
 
+        Function<NewsRelease, NewsCategory> categorize = news -> {
+            String title = news.getTitle().toLowerCase();
+            if (title.contains("moon")) return NewsCategory.MOON;
+            if (title.contains("mars")) return NewsCategory.MARS;
+            if (title.contains("space")) return NewsCategory.SPACE;
+            if (title.contains("artemis")) return NewsCategory.ARTEMIS;
+            return NewsCategory.UNKNOWN;
+        };
+
+        // Apply the categorization function to each news item
+        rssFeed.forEach(news -> news.setCategory(categorize.apply(news)));
         return rssFeed;
     }
 
@@ -163,4 +205,24 @@ public class RssParser {
         }
         return largest;
     }
+
+    private void writeFailedDownloadsToLog(Map<String, String> failedDownloads) {
+        Path logFile = Paths.get("logs", "failed_downloads.txt");
+        try {
+            if (!Files.exists(logFile.getParent())) {
+                Files.createDirectories(logFile.getParent());
+            }
+
+            try (BufferedWriter writer = Files.newBufferedWriter(logFile, StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
+                for (Map.Entry<String, String> entry : failedDownloads.entrySet()) {
+                    writer.write("GUID: " + entry.getKey() + " - " + entry.getValue());
+                    writer.newLine();
+                }
+            }
+            System.out.println("Failed downloads logged to " + logFile);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
 }

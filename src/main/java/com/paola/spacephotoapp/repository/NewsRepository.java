@@ -1,24 +1,49 @@
-package com.paola.spacephotoapp.helping;
+package com.paola.spacephotoapp.repository;
 
 
 import com.paola.spacephotoapp.dbservice.DatabaseService;
-import com.paola.spacephotoapp.model.NewsRelease;
+import com.paola.spacephotoapp.domain.model.NewsRelease;
 
 import java.sql.*;
-import java.util.ArrayList;
+import java.util.*;
 import java.util.List;
 
-public class NewsRepository {
+public class NewsRepository implements NewsRepositoryInterface {
+
+    // singleton DatabaseService usage, get object created at class load
+    // via getInstance()
     private final DatabaseService db = DatabaseService.getInstance();
 
+    @Override
+    public void insertNews(NewsRelease news) {
+        db.insertNewsRelease(news);
+    }
+
+    @Override
     public boolean existsByGuid(String guid) {
         return db.alreadyInDatabase(guid);
     }
 
-    public void save(NewsRelease news) {
-        db.insertNewsRelease(news);
+    @Override
+    public Set<String> getAllGuids() {
+        Set<String> guids = new HashSet<>();
+        String sql = "SELECT guid FROM NewsRelease";
+
+        try (Connection conn = DriverManager.getConnection(DatabaseService.CONNECTION_URL);
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+
+            while (rs.next()) {
+                guids.add(rs.getString("guid"));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return guids;
     }
 
+    @Override
     public List<NewsRelease> findAll() {
         List<NewsRelease> newsList = new ArrayList<>();
         String sql = "SELECT title, description, link, guid, pubDate, imageUrl, localImagePath FROM NewsRelease ORDER BY pubDate DESC";
@@ -41,7 +66,7 @@ public class NewsRepository {
         } catch (SQLException e) {
             e.printStackTrace();
         }
+
         return newsList;
     }
-
 }

@@ -25,3 +25,16 @@ USE Photo;
 EXEC sp_addrolemember 'db_owner', 'photo_user';
 ALTER LOGIN photo_user WITH PASSWORD = 'photo123!';
 
+CREATE PROCEDURE InsertNewsRelease
+    @title NVARCHAR(MAX),
+    @description NVARCHAR(MAX),
+    @link NVARCHAR(500),
+    @guid NVARCHAR(255),
+    @pubDate NVARCHAR(100),
+    @imageUrl NVARCHAR(1000),
+    @localImagePath NVARCHAR(500)
+AS
+BEGIN
+    INSERT INTO NewsRelease (title, description, link, guid, pubDate, imageUrl, localImagePath)
+    VALUES (@title, @description, @link, @guid, @pubDate, @imageUrl, @localImagePath);
+END
