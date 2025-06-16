@@ -50,6 +50,9 @@ public class MainFrame extends JFrame {
     private enum ViewMode { TITLE_ONLY, TITLE_DESC, FULL }
     private ViewMode currentViewMode = ViewMode.FULL;
 
+    private JSplitPane splitPane;
+
+
     // Setup menu in the bar
     private void setupMenuBar() {
         JMenuBar menuBar = new JMenuBar();
@@ -79,6 +82,7 @@ public class MainFrame extends JFrame {
         statsFrame.setLocationRelativeTo(this); // centers relative to main
 
         JLabel statsLabel = new JLabel("News loaded: " + controller.getNewsList().size(), SwingConstants.CENTER);
+
         statsLabel.setFont(new Font("Arial", Font.BOLD, 16));
 
         statsFrame.add(statsLabel);
@@ -118,10 +122,6 @@ public class MainFrame extends JFrame {
         imageLabel = new JLabel("", SwingConstants.CENTER);
         imageLabel.setPreferredSize(new Dimension(150, 100)); // was 600x400
 
-
-        //viewFullImageButton = new JButton("View Full Image");
-        //viewFullImageButton.addActionListener(e -> showFullImageDialog());
-
         JPanel centerPanel = new JPanel(new BorderLayout());
         centerPanel.add(imageLabel, BorderLayout.CENTER);
         // centerPanel.add(viewFullImageButton, BorderLayout.SOUTH);
@@ -131,6 +131,7 @@ public class MainFrame extends JFrame {
         dropPanel = new JPanel();
         dropPanel.setPreferredSize(new Dimension(600, 400));
         dropPanel.setBorder(BorderFactory.createTitledBorder("Drop Image Here"));
+        dropPanel.setMinimumSize(new Dimension(50, 50));
 
         dropLabel = new JLabel("Drag image here", SwingConstants.CENTER);
         dropLabel.setVerticalAlignment(SwingConstants.CENTER);
@@ -157,11 +158,7 @@ public class MainFrame extends JFrame {
                     Image img = (Image) support.getTransferable().getTransferData(DataFlavor.imageFlavor);
 
                     if (img != null) {
-                        // ✅ Resize to 600x400
-                        Image scaledImage = img.getScaledInstance(600, 400, Image.SCALE_SMOOTH);
-                        dropLabel.setIcon(new ImageIcon(scaledImage));
-                        dropLabel.setText(""); // Remove placeholder text
-                        return true;
+                        resizeDropLabelImage();
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -172,27 +169,56 @@ public class MainFrame extends JFrame {
 
         });
 
-
+        dropPanel.addComponentListener(new java.awt.event.ComponentAdapter() {
+            public void componentResized(java.awt.event.ComponentEvent e) {
+                resizeDropLabelImage();
+            }
+        });
 
 
         // Add the panel to the layout
-        //add(dropPanel, BorderLayout.WEST);
-        JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, dropPanel, scrollPanel);
+        splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, dropPanel, scrollPanel);
         splitPane.setResizeWeight(0.5); // Optional: 50/50 layout
         splitPane.setDividerLocation(500); // Optional: default split
         add(splitPane, BorderLayout.CENTER);
 
+        imageLabel.addMouseListener(new MouseAdapter() {
+            public void mousePressed(MouseEvent e) {
+                Icon icon = imageLabel.getIcon();
+                if (icon instanceof ImageIcon) {
+                    Image image = ((ImageIcon) icon).getImage();
 
-        // Wrap dropPanel in a full-width panel
-        /*JPanel bottomDropContainer = new JPanel(new BorderLayout());
-        bottomDropContainer.add(dropPanel, BorderLayout.CENTER);
-        bottomDropContainer.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+                    imageLabel.setTransferHandler(new TransferHandler() {
+                        @Override
+                        protected Transferable createTransferable(JComponent c) {
+                            return new Transferable() {
+                                @Override
+                                public DataFlavor[] getTransferDataFlavors() {
+                                    return new DataFlavor[]{DataFlavor.imageFlavor};
+                                }
 
-        add(bottomDropContainer, BorderLayout.SOUTH);*/
+                                @Override
+                                public boolean isDataFlavorSupported(DataFlavor flavor) {
+                                    return DataFlavor.imageFlavor.equals(flavor);
+                                }
 
-        // Enable drop
-        //dropPanel.setTransferHandler(new TransferHandler("icon"));
-        //add(dropPanel, BorderLayout.WEST); // or SOUTH, EAST etc.
+                                @Override
+                                public Object getTransferData(DataFlavor flavor) {
+                                    return fullSizeImage;
+                                }
+                            };
+                        }
+
+                        @Override
+                        public int getSourceActions(JComponent c) {
+                            return COPY;
+                        }
+                    });
+
+                    imageLabel.getTransferHandler().exportAsDrag(imageLabel, e, TransferHandler.COPY);
+                }
+            }
+        });
 
 
         descriptionArea = new JTextArea();
@@ -201,7 +227,9 @@ public class MainFrame extends JFrame {
         descriptionArea.setEditable(false);
         scrollPanel = new JScrollPane(descriptionArea);
         scrollPanel.setPreferredSize(new Dimension(350, 400));
-        add(scrollPanel, BorderLayout.EAST);
+        scrollPanel.setMinimumSize(new Dimension(50, 50));
+
+        //add(scrollPanel, BorderLayout.EAST);
 
         prevButton = new JButton("Previous");
         nextButton = new JButton("Next");
@@ -309,6 +337,21 @@ public class MainFrame extends JFrame {
 
     }
 
+    private void resizeDropLabelImage() {
+        if (fullSizeImage == null || dropLabel.getWidth() == 0 || dropLabel.getHeight() == 0)
+            return;
+
+        Image scaled = fullSizeImage.getScaledInstance(
+                dropLabel.getWidth(),
+                dropLabel.getHeight(),
+                Image.SCALE_SMOOTH
+        );
+
+        dropLabel.setIcon(new ImageIcon(scaled));
+        dropLabel.setText(""); // remove text placeholder
+    }
+
+
     private void navigate(int offset) {
         if (offset > 0 && controller.hasNext()) {
             controller.nextNews();
@@ -335,7 +378,25 @@ public class MainFrame extends JFrame {
             imageLabel.setVisible(showImage);
 
             // Drop panel visibility: only show in FULL
-            dropPanel.setVisible(currentViewMode == ViewMode.FULL);
+            //dropPanel.setVisible(currentViewMode == ViewMode.FULL);
+
+            // Dynamically replace the center split based on view mode
+            remove(splitPane); // remove old pane
+
+            if (currentViewMode == ViewMode.FULL) {
+                splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, dropPanel, scrollPanel);
+            } else if (currentViewMode == ViewMode.TITLE_DESC) {
+                splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, new JPanel(), scrollPanel); // No dropPanel
+            } else {
+                splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, new JPanel(), new JPanel()); // Both hidden
+            }
+
+            splitPane.setResizeWeight(0.5);
+            splitPane.setDividerLocation(500);
+            add(splitPane, BorderLayout.CENTER);
+            revalidate();
+            repaint();
+
 
             // Load and scale image
             ImageIcon icon = null;
@@ -352,44 +413,6 @@ public class MainFrame extends JFrame {
             } catch (Exception ignored) {}
 
             imageLabel.setIcon(icon);
-
-            imageLabel.addMouseListener(new MouseAdapter() {
-                public void mousePressed(MouseEvent e) {
-                    Icon icon = imageLabel.getIcon();
-                    if (icon instanceof ImageIcon) {
-                        Image image = ((ImageIcon) icon).getImage();
-
-                        imageLabel.setTransferHandler(new TransferHandler() {
-                            @Override
-                            protected Transferable createTransferable(JComponent c) {
-                                return new Transferable() {
-                                    @Override
-                                    public DataFlavor[] getTransferDataFlavors() {
-                                        return new DataFlavor[]{DataFlavor.imageFlavor};
-                                    }
-
-                                    @Override
-                                    public boolean isDataFlavorSupported(DataFlavor flavor) {
-                                        return DataFlavor.imageFlavor.equals(flavor);
-                                    }
-
-                                    @Override
-                                    public Object getTransferData(DataFlavor flavor) {
-                                        return fullSizeImage;
-                                    }
-                                };
-                            }
-
-                            @Override
-                            public int getSourceActions(JComponent c) {
-                                return COPY;
-                            }
-                        });
-
-                        imageLabel.getTransferHandler().exportAsDrag(imageLabel, e, TransferHandler.COPY);
-                    }
-                }
-            });
         });
     }
 

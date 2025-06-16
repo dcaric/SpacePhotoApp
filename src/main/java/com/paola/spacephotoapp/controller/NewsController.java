@@ -33,12 +33,17 @@ public class NewsController {
         currentIndex = 0;
     }
 
+    public List<NewsRelease> getNewsList() {
+        return new ArrayList<>(allNews); // or return filteredNews if you want the filtered ones
+    }
+
     /*
     public NewsRelease getCurrentNews() {
         if (filteredNews.isEmpty()) return null;
         return filteredNews.get(currentIndex);
     }
     */
+
 
     // with optional
     public Optional<NewsRelease> getOptionalCurrentNews() {
