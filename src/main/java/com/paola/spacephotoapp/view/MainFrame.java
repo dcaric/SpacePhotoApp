@@ -3,23 +3,22 @@
 package com.paola.spacephotoapp.view;
 
 import com.paola.spacephotoapp.controller.NewsController;
-import com.paola.spacephotoapp.domain.enums.NewsCategory;
+import com.paola.spacephotoapp.domain.model.NewsCategory;
 import com.paola.spacephotoapp.repository.NewsRepository;
 import com.paola.spacephotoapp.parser.RssParser;
 import com.paola.spacephotoapp.domain.model.NewsRelease;
 import com.paola.spacephotoapp.util.DialogUtils;
 
-import javax.swing.*;
 import java.awt.*;
-import java.awt.event.MouseAdapter;
 import java.util.List;
 import javax.imageio.ImageIO;
 import java.io.File;
 import java.awt.image.BufferedImage;
 
-import javax.swing.TransferHandler;
-import javax.swing.BorderFactory;
-import javax.swing.JComponent;
+import javax.swing.*;
+//import javax.swing.TransferHandler;
+//import javax.swing.BorderFactory;
+//import javax.swing.JComponent;
 
 import java.awt.datatransfer.Transferable;
 import java.awt.datatransfer.DataFlavor;
@@ -377,8 +376,7 @@ public class MainFrame extends JFrame {
             boolean showImage = currentViewMode == ViewMode.FULL;
             imageLabel.setVisible(showImage);
 
-            // Drop panel visibility: only show in FULL
-            //dropPanel.setVisible(currentViewMode == ViewMode.FULL);
+
 
             // Dynamically replace the center split based on view mode
             remove(splitPane); // remove old pane

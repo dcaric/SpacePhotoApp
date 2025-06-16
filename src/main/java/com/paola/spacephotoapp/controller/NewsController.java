@@ -2,7 +2,7 @@
 
 package com.paola.spacephotoapp.controller;
 
-import com.paola.spacephotoapp.domain.enums.NewsCategory;
+import com.paola.spacephotoapp.domain.model.NewsCategory;
 import com.paola.spacephotoapp.domain.model.NewsRelease;
 
 import java.util.ArrayList;
@@ -23,12 +23,17 @@ public class NewsController {
     }
 
     public void filterByCategory(NewsCategory category) {
+        System.out.println("filteredNews: " + filteredNews);
+
         if (category == null) {
             filteredNews = new ArrayList<>(allNews);
         } else {
             filteredNews = allNews.stream()
                     .filter(n -> n.getCategory() == category) // predicate usage
                     .collect(Collectors.toList()); // filter usage
+
+            System.out.println("filteredNews: " + filteredNews);
+
         }
         currentIndex = 0;
     }

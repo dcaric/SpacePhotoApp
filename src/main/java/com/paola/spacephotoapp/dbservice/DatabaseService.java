@@ -1,5 +1,6 @@
 package com.paola.spacephotoapp.dbservice;
 
+import com.paola.spacephotoapp.domain.model.NewsCategory;
 import com.paola.spacephotoapp.domain.model.NewsRelease;
 
 import java.sql.*;
@@ -28,7 +29,7 @@ public class DatabaseService {
         // without procedure
         //String sql = "INSERT INTO NewsRelease (title, description, link, guid, pubDate, imageUrl, localImagePath) VALUES (?, ?, ?, ?, ?, ?, ?)";
         // using procedure InsertNewsRelease
-        String sql = "EXEC InsertNewsRelease ?, ?, ?, ?, ?, ?, ?";
+        String sql = "EXEC InsertNewsRelease ?, ?, ?, ?, ?, ?, ?, ?";
         try (Connection conn = DriverManager.getConnection(CONNECTION_URL);
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
@@ -39,6 +40,9 @@ public class DatabaseService {
             stmt.setString(5, news.getPubDate());
             stmt.setString(6, news.getImageUrl());
             stmt.setString(7, news.getLocalImagePath());
+
+            String category = (news.getCategory() != null) ? news.getCategory().name() : NewsCategory.UNKNOWN.name();
+            stmt.setString(8, news.getCategory().toString());
 
             stmt.executeUpdate();
 

@@ -2,8 +2,6 @@
 
 package com.paola.spacephotoapp.domain.model;
 
-import com.paola.spacephotoapp.domain.enums.NewsCategory;
-
 import java.util.Objects;
 
 public class NewsRelease extends MediaItem implements Comparable<NewsRelease> {

@@ -2,6 +2,7 @@ package com.paola.spacephotoapp.repository;
 
 
 import com.paola.spacephotoapp.dbservice.DatabaseService;
+import com.paola.spacephotoapp.domain.model.NewsCategory;
 import com.paola.spacephotoapp.domain.model.NewsRelease;
 
 import java.sql.*;
@@ -46,7 +47,7 @@ public class NewsRepository implements NewsRepositoryInterface {
     @Override
     public List<NewsRelease> findAll() {
         List<NewsRelease> newsList = new ArrayList<>();
-        String sql = "SELECT title, description, link, guid, pubDate, imageUrl, localImagePath FROM NewsRelease ORDER BY pubDate DESC";
+        String sql = "SELECT title, description, link, guid, pubDate, imageUrl, category, localImagePath FROM NewsRelease ORDER BY pubDate DESC";
 
         try (Connection conn = DriverManager.getConnection(DatabaseService.CONNECTION_URL);
              PreparedStatement stmt = conn.prepareStatement(sql);
@@ -60,6 +61,7 @@ public class NewsRepository implements NewsRepositoryInterface {
                 news.setGuid(rs.getString("guid"));
                 news.setPubDate(rs.getString("pubDate"));
                 news.setImageUrl(rs.getString("imageUrl"));
+                news.setCategory(NewsCategory.valueOf(rs.getString("category")));
                 news.setLocalImagePath(rs.getString("localImagePath"));
                 newsList.add(news);
             }

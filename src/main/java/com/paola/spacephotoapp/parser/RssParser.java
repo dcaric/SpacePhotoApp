@@ -1,6 +1,6 @@
 package com.paola.spacephotoapp.parser;
 
-import com.paola.spacephotoapp.domain.enums.NewsCategory;
+import com.paola.spacephotoapp.domain.model.NewsCategory;
 import com.paola.spacephotoapp.repository.NewsRepository;
 import com.paola.spacephotoapp.repository.NewsRepositoryInterface;
 import com.paola.spacephotoapp.domain.model.NewsRelease;
@@ -72,7 +72,7 @@ public class RssParser {
             int addedCount = 0;
 
             for (int i = 0; i < items.getLength(); i++) {
-                if (addedCount >= count) break; // ✅ Stop if we've reached the limit
+                if (addedCount >= count) break; // Stop if we've reached the limit
 
                 org.w3c.dom.Element item = (org.w3c.dom.Element) items.item(i);
                 NewsRelease news = new NewsRelease();
@@ -112,13 +112,17 @@ public class RssParser {
                     downloadedGuids.add(news.getGuid());
                 }
 
+                String combined = news.getTitle() + " " + news.getDescription();
+                news.setCategory(detectCategory(combined)); // <-- move this up
+
                 if (!repository.existsByGuid(news.getGuid())) {
                     rssFeed.add(news);
-                    repository.insertNews(news);
-                    addedCount++; // ✅ Track how many we’ve added
+                    repository.insertNews(news); // now news has the category set
+                    addedCount++;
                 } else {
                     System.out.println("Skipped duplicate: " + news.getGuid());
                 }
+
             }
 
 
@@ -130,17 +134,6 @@ public class RssParser {
             e.printStackTrace();
         }
 
-        Function<NewsRelease, NewsCategory> categorize = news -> {
-            String title = news.getTitle().toLowerCase();
-            if (title.contains("moon")) return NewsCategory.MOON;
-            if (title.contains("mars")) return NewsCategory.MARS;
-            if (title.contains("space")) return NewsCategory.SPACE;
-            if (title.contains("artemis")) return NewsCategory.ARTEMIS;
-            return NewsCategory.UNKNOWN;
-        };
-
-        // Apply the categorization function to each news item
-        rssFeed.forEach(news -> news.setCategory(categorize.apply(news)));
         return rssFeed;
     }
 
@@ -230,5 +223,52 @@ public class RssParser {
             e.printStackTrace();
         }
     }
+
+    private static final Map<NewsCategory, List<String>> CATEGORY_KEYWORDS = Map.of(
+            NewsCategory.MOON, List.of("moon", "lunar"),
+            NewsCategory.MARS, List.of("mars"),
+            NewsCategory.ARTEMIS, List.of("artemis"),
+            NewsCategory.SPACE, List.of("galaxy", "telescope", "nebula", "hubble", "webb", "cluster")
+    );
+
+
+    public static NewsCategory detectCategory(String text) {
+        if (text == null || text.isBlank()) return NewsCategory.UNKNOWN;
+
+        String lowerText = text.toLowerCase();
+        Map<NewsCategory, Integer> scoreMap = new HashMap<>();
+
+        System.out.println("detectCategory text " + text);
+
+
+        for (Map.Entry<NewsCategory, List<String>> entry : CATEGORY_KEYWORDS.entrySet()) {
+            System.out.println("detectCategory entry " + entry);
+
+            int score = 0;
+            for (String keyword : entry.getValue()) {
+                if (lowerText.contains(keyword)) {
+                    System.out.println("detectCategory keyword " + keyword);
+
+                    score++;
+                }
+            }
+            if (score > 0) {
+                scoreMap.put(entry.getKey(), score);
+            }
+        }
+
+        var returnCategory = scoreMap.entrySet()
+                .stream()
+                .max(Map.Entry.comparingByValue())
+                .map(Map.Entry::getKey)
+                .orElse(NewsCategory.UNKNOWN);
+
+        System.out.println("detectCategory returnCategory " + returnCategory);
+
+        // Return the category with the highest score
+        return returnCategory;
+    }
+
+
 
 }

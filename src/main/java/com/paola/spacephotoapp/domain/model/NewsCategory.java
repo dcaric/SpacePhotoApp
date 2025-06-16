@@ -1,4 +1,4 @@
-package com.paola.spacephotoapp.domain.enums;
+package com.paola.spacephotoapp.domain.model;
 
 
 public enum NewsCategory {
