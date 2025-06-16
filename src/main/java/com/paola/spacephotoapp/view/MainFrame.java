@@ -59,6 +59,10 @@ public class MainFrame extends JFrame {
         exitItem.addActionListener(e -> System.exit(0));
         fileMenu.add(exitItem);
 
+        JMenuItem statsItem = new JMenuItem("Stats");
+        statsItem.addActionListener(e -> showStatsWindow());
+        fileMenu.add(statsItem);
+
         JMenu helpMenu = new JMenu("Help");
         JMenuItem aboutItem = new JMenuItem("About");
         aboutItem.addActionListener(e -> DialogUtils.showInfo(this, "NASA News Viewer v1.0"));
@@ -68,6 +72,19 @@ public class MainFrame extends JFrame {
         menuBar.add(helpMenu);
         setJMenuBar(menuBar);
     }
+
+    private void showStatsWindow() {
+        JFrame statsFrame = new JFrame("Statistics");
+        statsFrame.setSize(300, 200);
+        statsFrame.setLocationRelativeTo(this); // centers relative to main
+
+        JLabel statsLabel = new JLabel("News loaded: " + controller.getNewsList().size(), SwingConstants.CENTER);
+        statsLabel.setFont(new Font("Arial", Font.BOLD, 16));
+
+        statsFrame.add(statsLabel);
+        statsFrame.setVisible(true);
+    }
+
 
     public MainFrame(List<NewsRelease> newsList) {
         this.controller = new NewsController(newsList);
@@ -159,7 +176,13 @@ public class MainFrame extends JFrame {
 
 
         // Add the panel to the layout
-        add(dropPanel, BorderLayout.WEST);
+        //add(dropPanel, BorderLayout.WEST);
+        JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, dropPanel, scrollPanel);
+        splitPane.setResizeWeight(0.5); // Optional: 50/50 layout
+        splitPane.setDividerLocation(500); // Optional: default split
+        add(splitPane, BorderLayout.CENTER);
+
+
         // Wrap dropPanel in a full-width panel
         /*JPanel bottomDropContainer = new JPanel(new BorderLayout());
         bottomDropContainer.add(dropPanel, BorderLayout.CENTER);
