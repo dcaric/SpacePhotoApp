@@ -37,7 +37,7 @@ public class RssParser {
         Map<String, String> failedDownloads = new HashMap<>();
 
         // for preventing unnecessary download of feeds
-        NewsRepositoryInterface repository = new NewsRepository();
+        NewsRepository repository = new NewsRepository();
         Set<String> downloadedGuids = repository.getAllGuids();
 
 
