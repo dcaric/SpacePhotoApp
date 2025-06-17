@@ -173,22 +173,33 @@ public class RssParser {
     private void downloadImage(String imageUrl, String filename) {
         try {
             URL url = new URL(imageUrl);
-            InputStream in = url.openStream(); // Opens a connection to the URL and gets an input stream to read the image data.
-            Path folder = Paths.get("assets"); // Defines the path for the 'assets' folder.
+            Path folder = Paths.get("assets");
 
-            // Checks if the 'assets' folder exists, and creates it if it doesn't.
+            // Ensure the assets folder exists
             if (!Files.exists(folder)) {
-                Files.createDirectory(folder);
+                Files.createDirectories(folder); // Use createDirectories to create parent directories if needed
             }
-            Path targetPath = folder.resolve(filename); // Combines the 'assets' folder path with the desired filename to create the full save path.
+            Path targetPath = folder.resolve(filename);
 
-            // Copies the image data from the input stream to the target file, replacing it if it already exists.
-            Files.copy(in, targetPath, StandardCopyOption.REPLACE_EXISTING);
-            in.close(); // Closes the input stream to release resources.
+            // Use try-with-resources for automatic closing of the InputStream
+            try (InputStream in = url.openStream()) {
+                // StandardCopyOption.REPLACE_EXISTING attempts to replace an existing file.
+                // If the file is locked by another process, this will throw the FileSystemException.
+                // You might consider StandardCopyOption.ATOMIC_MOVE or a more robust retry logic
+                // if this issue persists with external locks. For now, let's ensure *our* stream is closed.
+                Files.copy(in, targetPath, StandardCopyOption.REPLACE_EXISTING);
+            } // 'in' is automatically closed here
+
             System.out.println("Downloaded: " + filename);
-        } catch (Exception e) {
-            System.err.println("Failed to download " + imageUrl);
-            e.printStackTrace(); // Prints any errors that occur during the download process.
+        } catch (IOException e) { // Catch IOException specifically for file-related issues
+            System.err.println("Failed to download " + imageUrl + ": " + e.getMessage()); // Log specific message
+            // No need for e.printStackTrace() if you are logging the error and handling it
+            // by adding to failedDownloads map and then logging via LogUtils.
+            // For debugging, keep it for now.
+            e.printStackTrace();
+        } catch (Exception e) { // Catch other potential exceptions (e.g., malformed URL)
+            System.err.println("An unexpected error occurred while downloading " + imageUrl + ": " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
